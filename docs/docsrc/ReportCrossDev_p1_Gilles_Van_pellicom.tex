@@ -1,0 +1,171 @@
+\documentclass{report}
+\usepackage{amsmath, amssymb}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes, calc, fit}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{caption}
+\geometry{margin=1in}
+
+\title{Lab 1: Qt6 Testcase Compile Using MXE\\\large YT0798 Cross Development, Thomas More}
+\author{Gilles Van pellicom}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\tableofcontents
+\clearpage
+
+% ---------------------------
+% Notes
+% ---------------------------
+\chapter*{Notes on the Process}
+\addcontentsline{toc}{chapter}{Notes}
+
+\section*{Reproducability}
+\begin{itemize}
+    \item \textbf{Cross-compilation environment:}
+    \begin{itemize}
+        \item \textbf{Platform:} Ubuntu 24.04.3 LTS Server
+        \item \textbf{Hardware:} AMD EPYC 7502P, 128\,GB DDR4
+        \item \textbf{Build system:} GNU Make 4.3
+        \item \textbf{Project generator:} CMake 3.28.3
+        \item \textbf{Compiler:} GCC 13.3.0
+        \item \textbf{Cross-compile toolchain:} MXE v2023.10
+    \end{itemize}
+
+    \item \textbf{Development environment:}
+    \begin{itemize}
+        \item \textbf{Platform:} macOS Tahoe 26.1
+        \item \textbf{Hardware:} M3 Pro, 36\,GB LPDDR5
+        \item \textbf{Build system:} GNU Make 4.4
+        \item \textbf{Project generator:} CMake 4.1.2
+        \item \textbf{Compiler:} Apple Clang 18.0.0
+        \item \textbf{IDE:} CLion 2025.2
+    \end{itemize}
+
+    \item \textbf{Testing environment:}
+    \begin{itemize}
+        \item \textbf{Platform:} Windows 11 24H2 (build 26100.6584)
+        \item \textbf{Hardware:} Intel i7-6700K, 32\,GB DDR4
+    \end{itemize}
+\end{itemize}
+
+% ---------------------------
+% Testcase
+% ---------------------------
+\chapter{Testcase}
+
+\section{Requirements and Fulfillment}
+
+The test case chosen is a calculator application developed in Qt6, meeting the following evaluation criteria:
+
+\begin{itemize}
+  \item \textbf{Standard widgets:} Implemented using \texttt{QPushButton}, \texttt{QLineEdit}, and \texttt{QComboBox} for number input, operation selection, and mode switching.
+  \item \textbf{Custom widget drawn with primitives:} \texttt{DisplayWidget} renders the calculator display with rounded rectangle background, custom typography, and right-aligned text using \texttt{QPainter} primitives.
+  \item \textbf{Dialog for selecting a file or color:} Settings dialog includes \texttt{QColorDialog} for accent color selection.
+  \item \textbf{File I/O or settings storage:} Selected accent color stored persistently using nlohmann JSON library with file I/O.
+  \item \textbf{Variable content using \texttt{QStackedWidget}:} Switches between normal and scientific calculator modes, similar to Android's fragment-based navigation.
+\end{itemize}
+
+\section{Portability Considerations}
+
+Since I usually work with portability in mind, the application required no modifications for cross-compilation with MXE. Portability practices used include but are not limited to:
+
+\begin{itemize}
+  \item \textbf{Cross-compatible JSON library:} Utilized the nlohmann JSON library, which is platform-agnostic.
+  \item \textbf{Dynamic file paths:} Used \texttt{QFile f(settingsFilePath())} instead of static paths to handle file I/O portably.
+  \item \textbf{OS-agnostic color picker:} Leveraged Qt's \texttt{QColorDialog} to handle color selection, allowing Qt to manage platform-specific details seamlessly.
+\end{itemize}
+
+% ---------------------------
+% Chapter 1
+% ---------------------------
+\chapter{Setup and Dependency Installation}
+
+\section{System Update and Package Installation}
+
+Install all required tools for compilation of MXE and Qt6:
+
+\begin{verbatim}
+sudo apt update
+sudo apt install -y autoconf automake autopoint bash bison bzip2 flex g++ \
+g++-multilib gettext git gperf intltool libffi-dev libgdk-pixbuf2.0-dev \
+libtool libltdl-dev libssl-dev libxml-parser-perl make python3 python3-pip
+\end{verbatim}
+MXE requires \texttt{mako} for \texttt{mako-render} during the Qt6 build. Install it using \texttt{pip3}:
+
+\begin{verbatim}
+pip3 install mako
+\end{verbatim}
+MXE assumes \texttt{python} to be the command to trigger python. Most systems have moved on to \texttt{python3}. A simple fix for this is:
+
+\begin{verbatim}
+sudo apt install python-is-python3
+\end{verbatim}
+Now MXE will correctly be able to exectute python scripts.
+
+\section{Cloning and Building MXE}
+
+Clone the MXE repository and build Qt6 for the static Windows 64-bit target:
+
+\begin{verbatim}
+git clone https://github.com/mxe/mxe.git
+cd ~/mxe
+make qt6 -j$(nproc)
+\end{verbatim}
+
+\section{Environment Configuration}
+
+Add MXE tools to the PATH for access to cross-compilation utilities inside .bashrc, for persistence:
+
+\begin{verbatim}
+export PATH=~/mxe/usr/bin:$PATH
+\end{verbatim}
+
+% ---------------------------
+% Chapter 2
+% ---------------------------
+\chapter{Project Compilation}
+
+\section{Preamble}
+
+Pull the project from git since the compiler machine is not my workspace. Navigate into the pulled project:
+
+\begin{verbatim}
+git clone https://github.com/GillesVanPellicom/TM_crossdev_2025/
+cd ~/TM_crossdev_2025
+\end{verbatim}
+Create appropriate build directory:
+\begin{verbatim}
+mkdir build-win64-static
+cd build-win64-static
+\end{verbatim}
+
+\section{CMake Configuration}
+
+Configure the project using MXE's CMake wrapper for the \texttt{x86\_64-w64-mingw32.static} target, which sets the toolchain and locates Qt6 automatically:
+
+\begin{verbatim}
+x86_64-w64-mingw32.static-cmake ..
+\end{verbatim}
+
+\section{Building the Executable}
+
+Compile the project to generate \texttt{crossdev.exe}:
+
+\begin{verbatim}
+make -j$(nproc)
+\end{verbatim}
+
+\section{Outcome}
+
+The build produces \texttt{crossdev.exe}, a standalone Windows 64-bit executable statically linked with Qt6. Manual testing revealed a fully working windows executable.
+
+
+A screenshot of the successful compilation is provided in the \texttt{screenshots} folder
+
+
+\end{document}
