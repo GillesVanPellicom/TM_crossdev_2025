@@ -44,7 +44,7 @@ void MainWindow::buildUi() {
     m_modeBox = new QComboBox(tb);
     m_modeBox->addItem("Normal");
     m_modeBox->addItem("Scientific");
-    connect(m_modeBox, &QComboBox::currentIndexChanged, this, [this](int idx){
+    connect(m_modeBox, &QComboBox::currentIndexChanged, this, [this](const int idx){
         if (idx == 0) setModeNormal(); else setModeScientific();
     });
     tb->addWidget(m_modeBox);
